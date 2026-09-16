@@ -2,12 +2,20 @@ name: Build Rudras Creation APK
 
 on:
   workflow_dispatch:
+    inputs:
+      update_manifest_url:
+        description: "Optional HTTPS URL for the app update manifest"
+        required: false
+        type: string
   push:
     branches:
       - main
 
 permissions:
   contents: read
+
+env:
+  UPDATE_MANIFEST_URL: ${{ inputs.update_manifest_url }}
 
 jobs:
   build:
@@ -39,7 +47,7 @@ jobs:
           gradle-version: '8.13'
 
       - name: Build release APK
-        run: gradle --no-daemon --stacktrace :app:assembleRelease
+        run: gradle --no-daemon --stacktrace :app:assembleRelease -PrudrasUpdateManifestUrl="${UPDATE_MANIFEST_URL}"
 
       - name: Upload release APK
         uses: actions/upload-artifact@v4
