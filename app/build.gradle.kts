@@ -32,12 +32,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    sourceSets {
-        getByName("main") {
-            java.srcDirs(rootProject.projectDir)
-        }
-    }
-
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -55,4 +49,3 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
-
