@@ -46,13 +46,30 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Build release APK
-        run: gradle --no-daemon --stacktrace :app:assembleRelease -PrudrasUpdateManifestUrl="${UPDATE_MANIFEST_URL}"
+      - name: Build temporary test-signed APK
+        run: gradle --no-daemon --stacktrace :app:assembleRelease -PuseTemporaryTestSigning=true -PrudrasUpdateManifestUrl="${UPDATE_MANIFEST_URL}"
 
-      - name: Upload release APK
+      - name: Install and launch APK on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: Pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            adb install -r app/build/outputs/apk/release/app-release.apk
+            test -n "$(adb shell pm path com.rudras.creation)"
+            adb shell am force-stop com.rudras.creation
+            adb shell am start -n com.rudras.creation/.MainActivity
+            sleep 8
+            test -n "$(adb shell pidof com.rudras.creation)"
+
+      - name: Upload test-signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: rudras-creation-release-apk
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          name: rudras-creation-test-signed-apk
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
