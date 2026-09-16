@@ -5,6 +5,11 @@ plugins {
 }
 
 val updateManifestUrl = providers.gradleProperty("rudrasUpdateManifestUrl").orNull.orEmpty()
+val useTemporaryTestSigning = providers.gradleProperty("useTemporaryTestSigning").orNull == "true"
+val releaseStoreFile = providers.gradleProperty("releaseStoreFile").orNull
+val releaseStorePassword = providers.gradleProperty("releaseStorePassword").orNull
+val releaseKeyAlias = providers.gradleProperty("releaseKeyAlias").orNull
+val releaseKeyPassword = providers.gradleProperty("releaseKeyPassword").orNull
 
 android {
     namespace = "com.rudras.creation"
@@ -19,6 +24,17 @@ android {
         buildConfigField("String", "UPDATE_MANIFEST_URL", "\"${updateManifestUrl}\"")
     }
 
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("production") {
+                storeFile = file(releaseStoreFile)
+                storePassword = requireNotNull(releaseStorePassword) { "releaseStorePassword is required with releaseStoreFile" }
+                keyAlias = requireNotNull(releaseKeyAlias) { "releaseKeyAlias is required with releaseStoreFile" }
+                keyPassword = requireNotNull(releaseKeyPassword) { "releaseKeyPassword is required with releaseStoreFile" }
+            }
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -28,6 +44,11 @@ android {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
+            signingConfig = when {
+                useTemporaryTestSigning -> signingConfigs.getByName("debug")
+                releaseStoreFile != null -> signingConfigs.getByName("production")
+                else -> null
+            }
         }
     }
 
