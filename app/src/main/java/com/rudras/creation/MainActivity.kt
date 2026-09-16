@@ -68,11 +68,140 @@ in Every Thread",color=Color.White,fontSize=28.sp,fontWeight=FontWeight.Bold);Sp
 
 @Composable private fun EmptyCatalogue(retry:()->Unit){Box(Modifier.fillMaxWidth().padding(30.dp),contentAlignment=Alignment.Center){Column(horizontalAlignment=Alignment.CenterHorizontally){Text("No products available",fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=Ink);Spacer(Modifier.height(6.dp));Text("Please check back soon.",color=Color.Gray);Spacer(Modifier.height(14.dp));OutlinedButton(onClick=retry){Text("Retry")}}}}
 
-@Composable fun ProductCard(p:Product,action:()->Unit){Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).clickable{action()}.padding(10.dp),verticalAlignment=Alignment.CenterVertically){AsyncImage(p.imageUrl,contentDescription=p.name,modifier=Modifier.size(105.dp).clip(RoundedCornerShape(14.dp)),contentScale=ContentScale.Crop);Spacer(Modifier.width(12.dp));Column{Text(p.name,fontWeight=FontWeight.SemiBold);Text(p.category,color=Color.Gray,fontSize=12.sp);Spacer(Modifier.height(5.dp));Text("₹${"%.0f".format(p.price)}",fontWeight=FontWeight.Bold,color=Wine);if((p.oldPrice?:0.0)>p.price)Text("₹${"%.0f".format(p.oldPrice)}",fontSize=11.sp,color=Color.Gray)}}}
-@Composable fun Detail(p:Product,vm:MainViewModel,cart:()->Unit,back:()->Unit){Column(Modifier.fillMaxSize().background(Cream)){Top("Product",back);AsyncImage(p.imageUrl,p.name,Modifier.fillMaxWidth().height(330.dp),contentScale=ContentScale.Crop);Column(Modifier.padding(20.dp)){Text(p.name,fontSize=25.sp,fontWeight=FontWeight.Bold);Text("★ ${p.rating} (${p.reviews})",color=Gold);Text("₹${"%.0f".format(p.price)}",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Wine);Spacer(Modifier.height(12.dp));Text(p.description?:"Elegant handcrafted style from Rudras Creation.",color=Color.DarkGray);Spacer(Modifier.height(20.dp));Button(onClick={vm.add(p);cart()},Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=Wine)){Text("ADD TO CART")}}}}
-@Composable fun Cart(vm:MainViewModel,checkout:()->Unit,back:()->Unit){val cart=vm.cart.collectAsState().value;Column(Modifier.fillMaxSize().background(Cream)){Top("My Cart",back);if(cart.isEmpty())Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Text("Your cart is empty.")}else{LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){items(cart){c->Row(Modifier.fillMaxWidth().background(Color.White).padding(10.dp),verticalAlignment=Alignment.CenterVertically){AsyncImage(c.product.imageUrl,c.product.name,Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)),contentScale=ContentScale.Crop);Column(Modifier.padding(start=10.dp)){Text(c.product.name,fontWeight=FontWeight.Bold);Text("₹${"%.0f".format(c.product.price)} × ${c.qty}");Row{Text("−",Modifier.clickable{vm.remove(c.product)}.padding(8.dp));Text("${c.qty}",Modifier.padding(8.dp));Text("+",Modifier.clickable{vm.add(c.product)}.padding(8.dp))}}}}};Text("Total  ₹${"%.0f".format(vm.total())}",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(18.dp));Button(onClick=checkout,Modifier.fillMaxWidth().padding(18.dp),colors=ButtonDefaults.buttonColors(containerColor=Wine)){Text("PROCEED TO CHECKOUT")}}}}
-@Composable fun Checkout(vm:MainViewModel,done:(String)->Unit,back:()->Unit){var name by remember{mutableStateOf("")};var phone by remember{mutableStateOf("")};var address by remember{mutableStateOf("")};var city by remember{mutableStateOf("")};var state by remember{mutableStateOf("")};var pin by remember{mutableStateOf("")};var error by remember{mutableStateOf("")};Column(Modifier.fillMaxSize().background(Cream)){Top("Checkout",back);LazyColumn(contentPadding=PaddingValues(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){item{Field("Full name",name){name=it}};item{Field("Phone",phone){phone=it}};item{Field("Address",address){address=it}};item{Field("City",city){city=it}};item{Field("State",state){state=it}};item{Field("Pincode",pin){pin=it}};item{Text("Payment: Cash on Delivery",fontWeight=FontWeight.SemiBold)};item{if(error.isNotBlank())Text(error,color=Color.Red)};item{Button(onClick={if(name.isBlank()||phone.isBlank()||address.isBlank()||city.isBlank()||state.isBlank()||pin.isBlank())error="Please complete all required details" else vm.placeOrder(name,phone,"",address,city,state,pin,"Standard Delivery","Cash on Delivery","",{done(it)},{error=it})},Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=Wine)){Text("PLACE ORDER")}}}}}
-@Composable fun Field(label:String,value:String,onValue:(String)->Unit){OutlinedTextField(value,onValue,label={Text(label)},modifier=Modifier.fillMaxWidth(),singleLine=true)}
-@Composable fun Success(id:String,home:()->Unit){Column(Modifier.fillMaxSize().background(Cream).padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text("Order Confirmed",fontSize=28.sp,fontWeight=FontWeight.Bold,color=Wine);Spacer(Modifier.height(12.dp));Text(id);Spacer(Modifier.height(25.dp));Button(home,colors=ButtonDefaults.buttonColors(containerColor=Wine)){Text("CONTINUE SHOPPING")}}}
-@Composable fun Account(back:()->Unit){Column(Modifier.fillMaxSize().background(Cream)){Top("My Account",back);listOf("My Orders","Wishlist","Addresses","Coupons & Offers","Help & Support","Settings").forEach{Row(Modifier.fillMaxWidth().clickable{}.padding(20.dp)){Text(it,fontSize=17.sp);Spacer(Modifier.weight(1f));Text("›",fontSize=24.sp)}}}}
+@Composable
+fun ProductCard(p: Product, action: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).clickable { action() }.padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(p.imageUrl, contentDescription = p.name, modifier = Modifier.size(105.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop)
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(p.name, fontWeight = FontWeight.SemiBold)
+            Text(p.category, color = Color.Gray, fontSize = 12.sp)
+            Spacer(Modifier.height(5.dp))
+            Text("₹" + "%.0f".format(p.price), fontWeight = FontWeight.Bold, color = Wine)
+            if ((p.oldPrice ?: 0.0) > p.price) {
+                Text("₹" + "%.0f".format(p.oldPrice), fontSize = 11.sp, color = Color.Gray)
+            }
+        }
+    }
+}
 
+@Composable
+fun Detail(p: Product, vm: MainViewModel, cart: () -> Unit, back: () -> Unit) {
+    Column(Modifier.fillMaxSize().background(Cream)) {
+        Top("Product", back)
+        AsyncImage(p.imageUrl, p.name, Modifier.fillMaxWidth().height(330.dp), contentScale = ContentScale.Crop)
+        Column(Modifier.padding(20.dp)) {
+            Text(p.name, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+            Text("★ " + p.rating + " (" + p.reviews + ")", color = Gold)
+            Text("₹" + "%.0f".format(p.price), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Wine)
+            Spacer(Modifier.height(12.dp))
+            Text(p.description ?: "Elegant handcrafted style from Rudras Creation.", color = Color.DarkGray)
+            Spacer(Modifier.height(20.dp))
+            Button(onClick = { vm.add(p); cart() }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Wine)) {
+                Text("ADD TO CART")
+            }
+        }
+    }
+}
+
+@Composable
+fun Cart(vm: MainViewModel, checkout: () -> Unit, back: () -> Unit) {
+    val cartItems = vm.cart.collectAsState().value
+    Column(Modifier.fillMaxSize().background(Cream)) {
+        Top("My Cart", back)
+        if (cartItems.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Your cart is empty.") }
+        } else {
+            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(cartItems) { item ->
+                    Row(Modifier.fillMaxWidth().background(Color.White).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        AsyncImage(item.product.imageUrl, item.product.name, Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                        Column(Modifier.padding(start = 10.dp)) {
+                            Text(item.product.name, fontWeight = FontWeight.Bold)
+                            Text("₹" + "%.0f".format(item.product.price) + " × " + item.qty)
+                            Row {
+                                Text("−", Modifier.clickable { vm.remove(item.product) }.padding(8.dp))
+                                Text(item.qty.toString(), Modifier.padding(8.dp))
+                                Text("+", Modifier.clickable { vm.add(item.product) }.padding(8.dp))
+                            }
+                        }
+                    }
+                }
+            }
+            Text("Total  ₹" + "%.0f".format(vm.total()), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(18.dp))
+            Button(onClick = checkout, Modifier.fillMaxWidth().padding(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Wine)) {
+                Text("PROCEED TO CHECKOUT")
+            }
+        }
+    }
+}
+
+@Composable
+fun Checkout(vm: MainViewModel, done: (String) -> Unit, back: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+    var city by remember { mutableStateOf("") }
+    var state by remember { mutableStateOf("") }
+    var pin by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf("") }
+    Column(Modifier.fillMaxSize().background(Cream)) {
+        Top("Checkout", back)
+        LazyColumn(contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { Field("Full name", name) { name = it } }
+            item { Field("Phone", phone) { phone = it } }
+            item { Field("Address", address) { address = it } }
+            item { Field("City", city) { city = it } }
+            item { Field("State", state) { state = it } }
+            item { Field("Pincode", pin) { pin = it } }
+            item { Text("Payment: Cash on Delivery", fontWeight = FontWeight.SemiBold) }
+            item { if (error.isNotBlank()) Text(error, color = Color.Red) }
+            item {
+                Button(
+                    onClick = {
+                        if (name.isBlank() || phone.isBlank() || address.isBlank() || city.isBlank() || state.isBlank() || pin.isBlank()) {
+                            error = "Please complete all required details"
+                        } else {
+                            vm.placeOrder(name, phone, "", address, city, state, pin, "Standard Delivery", "Cash on Delivery", "", { done(it) }) { error = it }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Wine)
+                ) { Text("PLACE ORDER") }
+            }
+        }
+    }
+}
+
+@Composable
+fun Field(label: String, value: String, onValue: (String) -> Unit) {
+    OutlinedTextField(value = value, onValueChange = onValue, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+}
+
+@Composable
+fun Success(id: String, home: () -> Unit) {
+    Column(Modifier.fillMaxSize().background(Cream).padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Text("Order Confirmed", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Wine)
+        Spacer(Modifier.height(12.dp))
+        Text(id)
+        Spacer(Modifier.height(25.dp))
+        Button(onClick = home, colors = ButtonDefaults.buttonColors(containerColor = Wine)) { Text("CONTINUE SHOPPING") }
+    }
+}
+
+@Composable
+fun Account(back: () -> Unit) {
+    Column(Modifier.fillMaxSize().background(Cream)) {
+        Top("My Account", back)
+        listOf("My Orders", "Wishlist", "Addresses", "Coupons & Offers", "Help & Support", "Settings").forEach {
+            Row(Modifier.fillMaxWidth().clickable { }.padding(20.dp)) {
+                Text(it, fontSize = 17.sp)
+                Spacer(Modifier.weight(1f))
+                Text("›", fontSize = 24.sp)
+            }
+        }
+    }
+}
