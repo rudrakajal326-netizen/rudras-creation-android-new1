@@ -4,6 +4,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val updateManifestUrl = providers.gradleProperty("rudrasUpdateManifestUrl").orNull.orEmpty()
+
 android {
     namespace = "com.rudras.creation"
     compileSdk = 35
@@ -14,6 +16,7 @@ android {
         targetSdk = 35
         versionCode = 2
         versionName = "1.1.0"
+        buildConfigField("String", "UPDATE_MANIFEST_URL", "\"${updateManifestUrl}\"")
     }
 
     buildFeatures {
