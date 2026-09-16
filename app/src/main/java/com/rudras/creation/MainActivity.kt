@@ -1,8 +1,12 @@
 package com.rudras.creation
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.widget.VideoView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,9 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
@@ -29,20 +36,38 @@ private val Cream=Color(0xFFF8F1E8); private val Wine=Color(0xFF5B0713); private
 
 class MainActivity:ComponentActivity(){override fun onCreate(b:Bundle?){super.onCreate(b);setContent{RudrasApp()}}}
 
-@Composable fun RudrasApp(vm:MainViewModel=viewModel()){MaterialTheme(colorScheme=lightColorScheme(primary=Wine,secondary=Gold,background=Cream,surface=Cream)){val nav=rememberNavController();NavHost(nav,"home"){composable("home"){Home(vm,{nav.navigate("products")},{nav.navigate("cart")},{nav.navigate("account")})};composable("products"){Products(vm,{nav.navigate("detail/${it.sku}")})};composable("detail/{sku}"){val sku=it.arguments?.getString("sku");val p=vm.products.collectAsState().value.firstOrNull{x->x.sku==sku};if(p!=null)Detail(p,vm,{nav.navigate("cart")},{nav.popBackStack()})};composable("cart"){Cart(vm,{nav.navigate("checkout")},{nav.popBackStack()})};composable("checkout"){Checkout(vm,{id->nav.navigate("success/$id")},{nav.popBackStack()})};composable("success/{id}"){Success(it.arguments?.getString("id")?:(vm.lastOrderId?:""),{nav.navigate("home")})};composable("account"){Account({nav.popBackStack()})}}}}
-
-@Composable fun Top(title:String,onBack:(()->Unit)?=null){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){if(onBack!=null){Text("‹",fontSize=32.sp,modifier=Modifier.clickable{onBack()});Spacer(Modifier.width(10.dp))};Text(title,fontSize=22.sp,fontWeight=FontWeight.SemiBold,color=Ink);Spacer(Modifier.weight(1f));Text("RC",fontSize=20.sp,color=Gold,fontWeight=FontWeight.Bold)}}
-@Composable fun Home(vm:MainViewModel,shop:()->Unit,cart:()->Unit,account:()->Unit){val ps=vm.products.collectAsState().value;Scaffold(bottomBar={BottomBar(shop,cart,account)}){p->LazyColumn(Modifier.fillMaxSize().background(Cream).padding(p)){item{Top("RUDRAS CREATION")};item{Text("Timeless Elegance\nModern You",fontSize=30.sp,fontWeight=FontWeight.Bold,color=Color.White,modifier=Modifier.padding(horizontal=18.dp).fillMaxWidth().height(190.dp).clip(RoundedCornerShape(22.dp)).background(Wine).padding(24.dp));Spacer(Modifier.height(16.dp))};item{Text("Shop by Category",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(horizontal=18.dp));Spacer(Modifier.height(10.dp));Row(Modifier.padding(horizontal=18.dp),horizontalArrangement=Arrangement.spacedBy(10.dp)){listOf("Sarees","Lehengas","Jewellery","Beauty").forEach{Box(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Color.White).padding(vertical=18.dp),contentAlignment=Alignment.Center){Text(it,fontSize=12.sp)}}};Spacer(Modifier.height(22.dp))};item{Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),verticalAlignment=Alignment.CenterVertically){Text("Featured Products",fontSize=20.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));Text("View all",color=Wine,modifier=Modifier.clickable{shop()})};Spacer(Modifier.height(10.dp))};items(ps.take(6)){ProductCard(it){vm.add(it)}}}}}
-@Composable
-fun BottomBar(shop:()->Unit,cart:()->Unit,account:()->Unit){
-    NavigationBar(containerColor=Cream){
-        NavigationBarItem(selected=true,onClick={},label={Text("Home")},icon={Text("⌂")})
-        NavigationBarItem(selected=false,onClick=shop,label={Text("Shop")},icon={Text("▦")})
-        NavigationBarItem(selected=false,onClick=cart,label={Text("Cart")},icon={Text("🛍")})
-        NavigationBarItem(selected=false,onClick=account,label={Text("Account")},icon={Text("◯")})
+@Composable fun RudrasApp(vm:MainViewModel=viewModel()){
+    val nav=rememberNavController()
+    val context=LocalContext.current
+    var update by remember { mutableStateOf<AppUpdate?>(null) }
+    LaunchedEffect(Unit){ update=UpdateChecker.check(BuildConfig.VERSION_CODE) }
+    MaterialTheme(colorScheme=lightColorScheme(primary=Wine,secondary=Gold,background=Cream,surface=Cream)){
+        NavHost(nav,"home"){
+            composable("home"){Home(vm,{nav.navigate("products")},{nav.navigate("cart")},{nav.navigate("account")})}
+            composable("products"){Products(vm,{nav.navigate("detail/${it.sku}")})}
+            composable("detail/{sku}"){val sku=it.arguments?.getString("sku");val p=vm.products.collectAsState().value.firstOrNull{x->x.sku==sku};if(p!=null)Detail(p,vm,{nav.navigate("cart")},{nav.popBackStack()})}
+            composable("cart"){Cart(vm,{nav.navigate("checkout")},{nav.popBackStack()})}
+            composable("checkout"){Checkout(vm,{id->nav.navigate("success/${id}")},{nav.popBackStack()})}
+            composable("success/{id}"){Success(it.arguments?.getString("id")?:(vm.lastOrderId?:""),{nav.navigate("home")})}
+            composable("account"){Account({nav.popBackStack()})}
+        }
+        update?.let{available->AlertDialog(onDismissRequest={update=null},title={Text("Update available")},text={Text(available.notes.ifBlank{"A newer version of Rudras Creation is ready."})},confirmButton={TextButton(onClick={context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(available.apkUrl)));update=null}){Text("Download")}},dismissButton={TextButton(onClick={update=null}){Text("Later")}})}
     }
 }
-@Composable fun Products(vm:MainViewModel,open:(Product)->Unit){val ps=vm.products.collectAsState().value;Column(Modifier.fillMaxSize().background(Cream)){Top("Shop");if(ps.isEmpty())Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Text("No products loaded. Check Supabase setup.")}else LazyColumn(contentPadding=PaddingValues(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){items(ps){ProductCard(it){open(it)}}}}}
+
+@Composable fun Top(title:String,onBack:(()->Unit)?=null){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically){if(onBack!=null){Text("‹",fontSize=32.sp,modifier=Modifier.clickable{onBack()});Spacer(Modifier.width(10.dp))};Image(painterResource(R.drawable.rudras_creation_logo_header),contentDescription=title,modifier=Modifier.height(34.dp).widthIn(max=165.dp),contentScale=ContentScale.Fit);Spacer(Modifier.weight(1f));Text("RC",fontSize=20.sp,color=Gold,fontWeight=FontWeight.Bold)}}
+
+@Composable fun Home(vm:MainViewModel,shop:()->Unit,cart:()->Unit,account:()->Unit){val ps=vm.products.collectAsState().value;Scaffold(bottomBar={BottomBar(shop,cart,account)}){p->LazyColumn(Modifier.fillMaxSize().background(Cream).padding(p)){item{Top("RUDRAS CREATION")};item{HeroBanner();Spacer(Modifier.height(16.dp))};item{Text("Shop by Category",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(horizontal=18.dp));Spacer(Modifier.height(10.dp));Row(Modifier.padding(horizontal=18.dp),horizontalArrangement=Arrangement.spacedBy(10.dp)){listOf("Sarees","Lehengas","Jewellery","Beauty").forEach{Box(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Color.White).padding(vertical=18.dp),contentAlignment=Alignment.Center){Text(it,fontSize=12.sp)}}};Spacer(Modifier.height(22.dp))};item{Row(Modifier.fillMaxWidth().padding(horizontal=18.dp),verticalAlignment=Alignment.CenterVertically){Text("Featured Products",fontSize=20.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.weight(1f));Text("View all",color=Wine,modifier=Modifier.clickable{shop()})};Spacer(Modifier.height(10.dp))};if(ps.isEmpty())item{EmptyCatalogue{vm.load()}}else items(ps.take(6)){ProductCard(it){vm.add(it)}}}}}
+
+@Composable private fun HeroBanner(){Box(Modifier.fillMaxWidth().height(230.dp).padding(horizontal=18.dp).clip(RoundedCornerShape(22.dp)).background(Wine)){AndroidView(factory={context->VideoView(context).apply{setVideoURI(Uri.parse("android.resource://${context.packageName}/${R.raw.rudras_creation_campaign_9s}"));setOnPreparedListener{player->player.isLooping=true;player.setVolume(0f,0f);start()}}},modifier=Modifier.fillMaxSize());Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=.28f)));Column(Modifier.align(Alignment.CenterStart).padding(24.dp)){Text("RUDRA'S CREATION",color=Color.White,fontSize=13.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp);Spacer(Modifier.height(8.dp));Text("Modern Grace
+in Every Thread",color=Color.White,fontSize=28.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.height(10.dp));Text("Shop the new collection",color=Color.White)}}}
+
+@Composable fun BottomBar(shop:()->Unit,cart:()->Unit,account:()->Unit){NavigationBar(containerColor=Cream){NavigationBarItem(selected=true,onClick={},label={Text("Home")},icon={Text("⌂")});NavigationBarItem(selected=false,onClick=shop,label={Text("Shop")},icon={Text("▦")});NavigationBarItem(selected=false,onClick=cart,label={Text("Cart")},icon={Text("🛍")});NavigationBarItem(selected=false,onClick=account,label={Text("Account")},icon={Text("◯")})}}
+
+@Composable fun Products(vm:MainViewModel,open:(Product)->Unit){val ps=vm.products.collectAsState().value;val loading=vm.loading.collectAsState().value;Column(Modifier.fillMaxSize().background(Cream)){Top("Shop");when{loading->Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator(color=Wine)};ps.isEmpty()->EmptyCatalogue{vm.load()};else->LazyColumn(contentPadding=PaddingValues(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){items(ps){ProductCard(it){open(it)}}}}}}
+
+@Composable private fun EmptyCatalogue(retry:()->Unit){Box(Modifier.fillMaxWidth().padding(30.dp),contentAlignment=Alignment.Center){Column(horizontalAlignment=Alignment.CenterHorizontally){Text("No products available",fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=Ink);Spacer(Modifier.height(6.dp));Text("Please check back soon.",color=Color.Gray);Spacer(Modifier.height(14.dp));OutlinedButton(onClick=retry){Text("Retry")}}}}
+
 @Composable fun ProductCard(p:Product,action:()->Unit){Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).clickable{action()}.padding(10.dp),verticalAlignment=Alignment.CenterVertically){AsyncImage(p.imageUrl,contentDescription=p.name,modifier=Modifier.size(105.dp).clip(RoundedCornerShape(14.dp)),contentScale=ContentScale.Crop);Spacer(Modifier.width(12.dp));Column{Text(p.name,fontWeight=FontWeight.SemiBold);Text(p.category,color=Color.Gray,fontSize=12.sp);Spacer(Modifier.height(5.dp));Text("₹${"%.0f".format(p.price)}",fontWeight=FontWeight.Bold,color=Wine);if((p.oldPrice?:0.0)>p.price)Text("₹${"%.0f".format(p.oldPrice)}",fontSize=11.sp,color=Color.Gray)}}}
 @Composable fun Detail(p:Product,vm:MainViewModel,cart:()->Unit,back:()->Unit){Column(Modifier.fillMaxSize().background(Cream)){Top("Product",back);AsyncImage(p.imageUrl,p.name,Modifier.fillMaxWidth().height(330.dp),contentScale=ContentScale.Crop);Column(Modifier.padding(20.dp)){Text(p.name,fontSize=25.sp,fontWeight=FontWeight.Bold);Text("★ ${p.rating} (${p.reviews})",color=Gold);Text("₹${"%.0f".format(p.price)}",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Wine);Spacer(Modifier.height(12.dp));Text(p.description?:"Elegant handcrafted style from Rudras Creation.",color=Color.DarkGray);Spacer(Modifier.height(20.dp));Button(onClick={vm.add(p);cart()},Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=Wine)){Text("ADD TO CART")}}}}
 @Composable fun Cart(vm:MainViewModel,checkout:()->Unit,back:()->Unit){val cart=vm.cart.collectAsState().value;Column(Modifier.fillMaxSize().background(Cream)){Top("My Cart",back);if(cart.isEmpty())Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){Text("Your cart is empty.")}else{LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){items(cart){c->Row(Modifier.fillMaxWidth().background(Color.White).padding(10.dp),verticalAlignment=Alignment.CenterVertically){AsyncImage(c.product.imageUrl,c.product.name,Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)),contentScale=ContentScale.Crop);Column(Modifier.padding(start=10.dp)){Text(c.product.name,fontWeight=FontWeight.Bold);Text("₹${"%.0f".format(c.product.price)} × ${c.qty}");Row{Text("−",Modifier.clickable{vm.remove(c.product)}.padding(8.dp));Text("${c.qty}",Modifier.padding(8.dp));Text("+",Modifier.clickable{vm.add(c.product)}.padding(8.dp))}}}}};Text("Total  ₹${"%.0f".format(vm.total())}",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(18.dp));Button(onClick=checkout,Modifier.fillMaxWidth().padding(18.dp),colors=ButtonDefaults.buttonColors(containerColor=Wine)){Text("PROCEED TO CHECKOUT")}}}}
